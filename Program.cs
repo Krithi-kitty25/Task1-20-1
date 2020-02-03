@@ -1,89 +1,87 @@
-﻿using Microsoft.Exchange.WebServices.Autodiscover;
-using Microsoft.Exchange.WebServices.Data;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Data;
+using System.Data.OleDb;
 using System.Linq;
-using System.Net;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 
-
-namespace GetAttachment
+namespace ExceltoDb2
 {
     class Program
     {
         static void Main(string[] args)
         {
-            var service = new ExchangeService();
-            service.Credentials = new NetworkCredential("krithika.shanmugakumar@philips.com", "Kittyapu*5");
+           string filepath = @"C:\Users\320086816\Documents\kitty-project\kitty\Sampleee.xlsx";
+            string filepath1= @"C:\Users\320086816\Documents\kitty-project\kitty\GRIR_auto_WPT_14012020_102511.xlsx";
+            DataTable DTMain = ConvertExcelToDataTable(filepath);
+            DataTable DTSub = ConvertExcelToDataTable2(filepath1);
 
-            try
-            {
-                service.Url = new Uri("https://outlook.office365.com/EWS/Exchange.asmx");
-            }
-            catch (AutodiscoverRemoteException ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
+        }
 
-            FolderId inboxId = new FolderId(WellKnownFolderName.Inbox, "krithika.shanmugakumar@philips.com");
-            var findResults = service.FindItems(inboxId, new ItemView(150));
-            try
+        public static DataTable ConvertExcelToDataTable(string FileName)
+        {
+                DataTable dtResult = null;
+            int totalSheet = 0; //No of sheets on excel file  
+            using (OleDbConnection objConn = new OleDbConnection(@"Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" + FileName + ";Extended Properties='Excel 12.0;HDR=YES;IMEX=1;';"))
             {
-
-                foreach (var message in findResults.Items)
+                objConn.Open();
+                OleDbCommand cmd = new OleDbCommand();
+                OleDbDataAdapter oleda = new OleDbDataAdapter();
+                DataSet ds = new DataSet();
+                DataTable dt = objConn.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, null);
+                string sheetName = string.Empty;
+                if (dt != null)
                 {
-
-                    var msg = EmailMessage.Bind(service, message.Id, new PropertySet(BasePropertySet.IdOnly, ItemSchema.Attachments));
-
-                    foreach (Microsoft.Exchange.WebServices.Data.Attachment attachment in msg.Attachments)
-                    {
-                        if (attachment is FileAttachment)
-                        {
-                            FileAttachment fileAttachment = attachment as FileAttachment;
-
-                            // Load the file attachment into memory and print out its file name.
-                            fileAttachment.Load();
-                            var filename = fileAttachment.Name;
-                            bool b;
-                            b = filename.Contains(".xlsx");
-
-                            if (b == true)
-                            {
-                                bool a;
-                                 bool k;
-                                a = filename.Contains("Fields");
-                                k = filename.Contains("MaterialID");
-                                
-                                    if (a == true || k== true)
-                                    {
-                                        var theStream = new FileStream("C:\\data\\kittu1\\" + fileAttachment.Name, FileMode.OpenOrCreate, FileAccess.ReadWrite);
-                                        fileAttachment.Load(theStream);
-                                        theStream.Close();
-                                        theStream.Dispose();
-
-                                    }
-                                
-                            }
-                        }
-                        else // Attachment is an item attachment.
-                        {
-                            // Load attachment into memory and write out the subject.
-                            ItemAttachment itemAttachment = attachment as ItemAttachment;
-                            itemAttachment.Load();
-                        }
-
-                    }
+                    var tempDataTable = (from dataRow in dt.AsEnumerable()
+                                         where !dataRow["TABLE_NAME"].ToString().Contains("FilterDatabase")
+                                         select dataRow).CopyToDataTable();
+                    dt = tempDataTable;
+                    totalSheet = dt.Rows.Count;
+                    sheetName = dt.Rows[0]["TABLE_NAME"].ToString();
                 }
+                cmd.Connection = objConn;
+                cmd.CommandType = CommandType.Text;
+                cmd.CommandText = "SELECT * FROM [" + sheetName + "]";
+                oleda = new OleDbDataAdapter(cmd);
+                oleda.Fill(ds, "excelData");
+                dtResult = ds.Tables["excelData"];
+                objConn.Close();
+                return dtResult; //Returning Dattable  
             }
-            catch (Exception e)
+        }
+
+        public static DataTable ConvertExcelToDataTable2(string FileName)
+        {
+            DataTable dtResult = null;
+            int totalSheet = 0; //No of sheets on excel file  
+            using (OleDbConnection objConn = new OleDbConnection(@"Provider=Microsoft.ACE.OLEDB.12.0;Data Source=" + FileName + ";Extended Properties='Excel 12.0;HDR=YES;IMEX=1;';"))
             {
-                Console.WriteLine("Error Occured" + e.Message);
+                objConn.Open();
+                OleDbCommand cmd = new OleDbCommand();
+                OleDbDataAdapter oleda = new OleDbDataAdapter();
+                DataSet ds = new DataSet();
+                DataTable dt = objConn.GetOleDbSchemaTable(OleDbSchemaGuid.Tables, null);
+                string sheetName = string.Empty;
+                if (dt != null)
+                {
+                    var tempDataTable = (from dataRow in dt.AsEnumerable()
+                                         where !dataRow["TABLE_NAME"].ToString().Contains("FilterDatabase")
+                                         select dataRow).CopyToDataTable();
+                    dt = tempDataTable;
+                    totalSheet = dt.Rows.Count;
+                    sheetName = dt.Rows[0]["TABLE_NAME"].ToString();
+                }
+                cmd.Connection = objConn;
+                cmd.CommandType = CommandType.Text;
+                cmd.CommandText = "SELECT * FROM [" + sheetName + "]";
+                oleda = new OleDbDataAdapter(cmd);
+                oleda.Fill(ds, "excelData");
+                dtResult = ds.Tables["excelData"];
+                objConn.Close();
+                return dtResult; //Returning Dattable  
             }
-            Console.WriteLine("Success");
-            Console.ReadLine();
         }
     }
 }
-
