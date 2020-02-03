@@ -1,89 +1,52 @@
-﻿using Microsoft.Exchange.WebServices.Autodiscover;
-using Microsoft.Exchange.WebServices.Data;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Data;
+using System.Data.SqlClient;
 using System.Linq;
-using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 
-
-namespace GetAttachment
+namespace Manipulation2
 {
     class Program
     {
         static void Main(string[] args)
         {
-            var service = new ExchangeService();
-            service.Credentials = new NetworkCredential("krithika.shanmugakumar@philips.com", "Kittyapu*5");
-
-            try
+            string connectionString = GetConnectionString();
+            ReturnIdentity(connectionString);
+        }
+        private static void ReturnIdentity(string connectionString)
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
             {
-                service.Url = new Uri("https://outlook.office365.com/EWS/Exchange.asmx");
-            }
-            catch (AutodiscoverRemoteException ex)
-            {
-                Console.WriteLine(ex.Message);
-            }
+                
+                SqlDataAdapter adapter = new SqlDataAdapter("SELECT * FROM dbo.Excel1", connection);
 
-            FolderId inboxId = new FolderId(WellKnownFolderName.Inbox, "krithika.shanmugakumar@philips.com");
-            var findResults = service.FindItems(inboxId, new ItemView(150));
-            try
-            {
+                // Create a SqlCommand to execute the stored procedure.
+                adapter.InsertCommand = new SqlCommand("GetExcel", connection);
+                adapter.InsertCommand.CommandType = CommandType.StoredProcedure;
 
-                foreach (var message in findResults.Items)
+                              
+
+               // Create a DataTable and fill it.
+                DataTable categories = new DataTable();
+                adapter.Fill(categories);
+
+                
+
+                // Update the database.
+                adapter.Update(categories);
+
+                foreach (DataRow row in categories.Rows)
                 {
-
-                    var msg = EmailMessage.Bind(service, message.Id, new PropertySet(BasePropertySet.IdOnly, ItemSchema.Attachments));
-
-                    foreach (Microsoft.Exchange.WebServices.Data.Attachment attachment in msg.Attachments)
-                    {
-                        if (attachment is FileAttachment)
-                        {
-                            FileAttachment fileAttachment = attachment as FileAttachment;
-
-                            // Load the file attachment into memory and print out its file name.
-                            fileAttachment.Load();
-                            var filename = fileAttachment.Name;
-                            bool b;
-                            b = filename.Contains(".xlsx");
-
-                            if (b == true)
-                            {
-                                bool a;
-                                 bool k;
-                                a = filename.Contains("Fields");
-                                k = filename.Contains("MaterialID");
-                                
-                                    if (a == true || k== true)
-                                    {
-                                        var theStream = new FileStream("C:\\data\\kittu1\\" + fileAttachment.Name, FileMode.OpenOrCreate, FileAccess.ReadWrite);
-                                        fileAttachment.Load(theStream);
-                                        theStream.Close();
-                                        theStream.Dispose();
-
-                                    }
-                                
-                            }
-                        }
-                        else // Attachment is an item attachment.
-                        {
-                            // Load attachment into memory and write out the subject.
-                            ItemAttachment itemAttachment = attachment as ItemAttachment;
-                            itemAttachment.Load();
-                        }
-
-                    }
+                    Console.WriteLine("  {0}: {1}", row[0], row[1]);
                 }
             }
-            catch (Exception e)
-            {
-                Console.WriteLine("Error Occured" + e.Message);
-            }
-            Console.WriteLine("Success");
-            Console.ReadLine();
+        }
+
+        static private string GetConnectionString()
+        {
+            return "Data Source=(local);Initial Catalog=Northwind;Integrated Security=true";
         }
     }
 }
-
